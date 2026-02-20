@@ -49,11 +49,18 @@ public class WsChatRepository {
                 .bind("message", message)
                 .fetch()
                 .rowsUpdated()
-                .then(databaseClient.sql("SELECT LAST_INSERT_ID() AS id")
-                        .map((row, metadata) -> row.get("id", Long.class))
-                        .one())
-                .switchIfEmpty(Mono.error(new IllegalStateException("failed to get inserted message id")))
-                .flatMap(this::findById);
+                .map(rows -> {
+                    if (rows == null || rows == 0) {
+                        throw new IllegalStateException("failed to insert message");
+                    }
+                    return new WsChatMessage(
+                            0L,
+                            roomId,
+                            sender,
+                            message,
+                            LocalDateTime.now()
+                    );
+                });
     }
 
     public Flux<WsChatMessage> findRecent(String roomId, int limit) {
@@ -76,19 +83,5 @@ public class WsChatRepository {
                 .all();
     }
 
-    private Mono<WsChatMessage> findById(long id) {
-        return databaseClient.sql(
-                        "SELECT id, room_id, sender, message, created_at FROM ws_chat_messages WHERE id = :id"
-                )
-                .bind("id", id)
-                .map((row, metadata) -> new WsChatMessage(
-                        row.get("id", Long.class),
-                        row.get("room_id", String.class),
-                        row.get("sender", String.class),
-                        row.get("message", String.class),
-                        row.get("created_at", LocalDateTime.class)
-                ))
-                .one()
-                .switchIfEmpty(Mono.error(new IllegalStateException("inserted message not found. id=" + id)));
-    }
+    
 }
