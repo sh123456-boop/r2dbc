@@ -33,6 +33,15 @@ public class WsChatRepository {
                 .then();
     }
 
+    public Mono<Void> sleep(int sleepMs) {
+        double seconds = sleepMs / 1000.0;
+        return databaseClient.sql("SELECT SLEEP(:seconds)")
+                .bind("seconds", seconds)
+                .fetch()
+                .rowsUpdated()
+                .then();
+    }
+
     public Mono<WsChatMessage> save(String roomId, String sender, String message) {
         return databaseClient.sql("INSERT INTO ws_chat_messages (room_id, sender, message) VALUES (:roomId, :sender, :message)")
                 .bind("roomId", roomId)

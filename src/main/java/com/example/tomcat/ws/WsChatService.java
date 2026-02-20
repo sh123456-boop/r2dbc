@@ -41,8 +41,10 @@ public class WsChatService {
         String roomId = requiredText(request, "roomId");
         String sender = requiredText(request, "sender");
         String message = requiredText(request, "message");
+        int sleepMs = sanitizeSleepMs(request.path("sleepMs").asInt(0));
 
-        return wsChatRepository.save(roomId, sender, message)
+        Mono<Void> sleepMono = sleepMs > 0 ? wsChatRepository.sleep(sleepMs) : Mono.empty();
+        return sleepMono.then(wsChatRepository.save(roomId, sender, message))
                 .map(saved -> {
                     try {
                         ObjectNode response = objectMapper.createObjectNode();
@@ -59,8 +61,10 @@ public class WsChatService {
     private Mono<String> handleRead(JsonNode request) {
         String roomId = requiredText(request, "roomId");
         int limit = sanitizeLimit(request.path("limit").asInt(50));
+        int sleepMs = sanitizeSleepMs(request.path("sleepMs").asInt(0));
 
-        return wsChatRepository.findRecent(roomId, limit)
+        Mono<Void> sleepMono = sleepMs > 0 ? wsChatRepository.sleep(sleepMs) : Mono.empty();
+        return sleepMono.thenMany(wsChatRepository.findRecent(roomId, limit))
                 .collectList()
                 .map(messages -> {
                     try {
@@ -115,6 +119,13 @@ public class WsChatService {
             return 1;
         }
         return Math.min(limit, 200);
+    }
+
+    private int sanitizeSleepMs(int sleepMs) {
+        if (sleepMs < 0) {
+            return 0;
+        }
+        return Math.min(sleepMs, 5000);
     }
 
     private boolean looksLikeJson(String payload) {
