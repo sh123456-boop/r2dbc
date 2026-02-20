@@ -26,14 +26,20 @@ public class WsChatRepository {
         this.databaseClient = databaseClient;
     }
 
+    public Mono<Void> ensureSchema() {
+        return databaseClient.sql(CREATE_TABLE_SQL)
+                .fetch()
+                .rowsUpdated()
+                .then();
+    }
+
     public Mono<WsChatMessage> save(String roomId, String sender, String message) {
-        return ensureSchema()
-                .then(databaseClient.sql("INSERT INTO ws_chat_messages (room_id, sender, message) VALUES (:roomId, :sender, :message)")
-                        .bind("roomId", roomId)
-                        .bind("sender", sender)
-                        .bind("message", message)
-                        .fetch()
-                        .rowsUpdated())
+        return databaseClient.sql("INSERT INTO ws_chat_messages (room_id, sender, message) VALUES (:roomId, :sender, :message)")
+                .bind("roomId", roomId)
+                .bind("sender", sender)
+                .bind("message", message)
+                .fetch()
+                .rowsUpdated()
                 .then(databaseClient.sql("SELECT LAST_INSERT_ID() AS id")
                         .map((row, metadata) -> row.get("id", Long.class))
                         .one())
@@ -42,24 +48,23 @@ public class WsChatRepository {
     }
 
     public Flux<WsChatMessage> findRecent(String roomId, int limit) {
-        return ensureSchema()
-                .thenMany(databaseClient.sql("""
+        return databaseClient.sql("""
                         SELECT id, room_id, sender, message, created_at
                         FROM ws_chat_messages
                         WHERE room_id = :roomId
                         ORDER BY id DESC
                         LIMIT :limit
                         """)
-                        .bind("roomId", roomId)
-                        .bind("limit", limit)
-                        .map((row, metadata) -> new WsChatMessage(
-                                row.get("id", Long.class),
-                                row.get("room_id", String.class),
-                                row.get("sender", String.class),
-                                row.get("message", String.class),
-                                row.get("created_at", LocalDateTime.class)
-                        ))
-                        .all());
+                .bind("roomId", roomId)
+                .bind("limit", limit)
+                .map((row, metadata) -> new WsChatMessage(
+                        row.get("id", Long.class),
+                        row.get("room_id", String.class),
+                        row.get("sender", String.class),
+                        row.get("message", String.class),
+                        row.get("created_at", LocalDateTime.class)
+                ))
+                .all();
     }
 
     private Mono<WsChatMessage> findById(long id) {
@@ -76,12 +81,5 @@ public class WsChatRepository {
                 ))
                 .one()
                 .switchIfEmpty(Mono.error(new IllegalStateException("inserted message not found. id=" + id)));
-    }
-
-    private Mono<Void> ensureSchema() {
-        return databaseClient.sql(CREATE_TABLE_SQL)
-                .fetch()
-                .rowsUpdated()
-                .then();
     }
 }
