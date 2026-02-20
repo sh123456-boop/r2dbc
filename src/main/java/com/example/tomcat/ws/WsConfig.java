@@ -11,10 +11,17 @@ import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAd
 public class WsConfig {
 
     @Bean
-    public HandlerMapping webSocketHandlerMapping(BenchWebSocketHandler benchWebSocketHandler) {
+    public HandlerMapping webSocketHandlerMapping(
+            BenchWebSocketHandler echoWebSocketHandler,
+            WsChatWebSocketHandler chatWebSocketHandler
+    ) {
         SimpleUrlHandlerMapping handlerMapping = new SimpleUrlHandlerMapping();
         handlerMapping.setOrder(-1);
-        handlerMapping.setUrlMap(Map.of("/ws/bench", benchWebSocketHandler));
+        handlerMapping.setUrlMap(Map.of(
+                "/ws/echo", echoWebSocketHandler,
+                "/ws/bench", echoWebSocketHandler,
+                "/ws/chat", chatWebSocketHandler
+        ));
         return handlerMapping;
     }
 
