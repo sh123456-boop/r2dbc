@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -45,6 +46,7 @@ public class WsChatService {
 
         Mono<Void> sleepMono = sleepMs > 0 ? wsChatRepository.sleep(sleepMs) : Mono.empty();
         return sleepMono.then(wsChatRepository.save(roomId, sender, message))
+                .map(ignored -> new WsChatMessage(0L, roomId, sender, message, LocalDateTime.now()))
                 .map(saved -> {
                     try {
                         ObjectNode response = objectMapper.createObjectNode();

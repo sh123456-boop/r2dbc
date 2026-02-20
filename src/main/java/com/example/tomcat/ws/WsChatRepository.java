@@ -42,25 +42,20 @@ public class WsChatRepository {
                 .then();
     }
 
-    public Mono<WsChatMessage> save(String roomId, String sender, String message) {
+    public Mono<Void> save(String roomId, String sender, String message) {
         return databaseClient.sql("INSERT INTO ws_chat_messages (room_id, sender, message) VALUES (:roomId, :sender, :message)")
                 .bind("roomId", roomId)
                 .bind("sender", sender)
                 .bind("message", message)
                 .fetch()
                 .rowsUpdated()
-                .map(rows -> {
+                .flatMap(rows -> {
                     if (rows == null || rows == 0) {
-                        throw new IllegalStateException("failed to insert message");
+                        return Mono.error(new IllegalStateException("failed to insert message"));
                     }
-                    return new WsChatMessage(
-                            0L,
-                            roomId,
-                            sender,
-                            message,
-                            LocalDateTime.now()
-                    );
-                });
+                    return Mono.empty();
+                })
+                .then();
     }
 
     public Flux<WsChatMessage> findRecent(String roomId, int limit) {
