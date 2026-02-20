@@ -1,0 +1,27 @@
+spring:
+  main:
+    web-application-type: reactive
+  r2dbc:
+    url: r2dbc:mysql://database-1.cf4aua8kqfwl.ap-northeast-2.rds.amazonaws.com:3306/bench?useSSL=false&serverTimezone=UTC
+    username: rian123
+    password: gktjdgns1!
+    pool:
+      enabled: true
+      max-size: ${R2DBC_POOL_MAX:50}
+      initial-size: ${R2DBC_POOL_INIT:50}
+      validation-query: SELECT 1
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: never
+  metrics:
+    tags:
+      application: ${spring.application.name:webflux-r2dbc}
