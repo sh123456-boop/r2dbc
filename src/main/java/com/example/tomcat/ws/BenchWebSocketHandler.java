@@ -11,9 +11,11 @@ import reactor.core.publisher.Mono;
 public class BenchWebSocketHandler implements WebSocketHandler {
 
     private final WsMetrics wsMetrics;
+    private final WsChatService wsChatService;
 
-    public BenchWebSocketHandler(WsMetrics wsMetrics) {
+    public BenchWebSocketHandler(WsMetrics wsMetrics, WsChatService wsChatService) {
         this.wsMetrics = wsMetrics;
+        this.wsChatService = wsChatService;
     }
 
     @Override
@@ -23,7 +25,8 @@ public class BenchWebSocketHandler implements WebSocketHandler {
         Flux<WebSocketMessage> outbound = session.receive()
                 .doOnNext(message -> wsMetrics.onMessage())
                 .map(WebSocketMessage::getPayloadAsText)
-                .map(payload -> session.textMessage("echo:" + payload));
+                .concatMap(wsChatService::handle)
+                .map(session::textMessage);
 
         return session.send(outbound)
                 .doFinally(signalType -> wsMetrics.onClose());
